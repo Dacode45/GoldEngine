@@ -1,0 +1,26 @@
+{
+  "Name":"ball",
+  "Transformer":{
+    "Kind":"CircleShape",
+    "Arguments":{
+      "OutlineThickness":3.0,
+      "OutlineColor":{
+        "R":0,
+        "G":0,
+        "B":0,
+        "A":255
+      },
+      "FillColor":{
+        "R":255,
+        "G":255,
+        "B":255,
+        "A":255
+      },
+      "Radius":10.0,
+      "Origin":{
+        "X":5.0,
+        "Y":5.0
+      }
+    }
+  }
+}

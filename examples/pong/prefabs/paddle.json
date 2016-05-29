@@ -1,0 +1,23 @@
+{
+  "Name":"paddle",
+  "Transformer":{
+    "Kind":"RectangleShape",
+    "Arguments":{
+      "OutlineThickness":3.0,
+      "OutlineColor":{
+        "R":0,
+        "G":0,
+        "B":0,
+        "A":255
+      },
+      "Size":{
+        "X":25.0,
+        "Y":100.0
+      },
+      "Origin":{
+        "X":12.5,
+        "Y":50.0
+      }
+    }
+  }
+}
