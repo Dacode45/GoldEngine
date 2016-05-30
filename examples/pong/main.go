@@ -1,7 +1,11 @@
 package main
 
-import GE "github.com/Dacode45/goldengine"
-import sf "github.com/manyminds/gosfml"
+import (
+	"fmt"
+
+	GE "github.com/Dacode45/goldengine"
+	sf "github.com/manyminds/gosfml"
+)
 
 func main() {
 	app := GE.NewGame(GE.GameConfig{Name: "Test"}, GE.WindowConfig{
@@ -12,5 +16,11 @@ func main() {
 	app.ProcessArguments()
 	app.Init()
 	app.ChangeScene("main")
+	scene, _ := app.GetScene("main")
+	scene.Start = func() {
+		fmt.Println("In Start")
+		paddle, _ := scene.GetEntityByName("leftPaddle")
+		scene.GetInputCollection().InstallKeyboardSet(paddle.KeyboardSet)
+	}
 	app.Run()
 }

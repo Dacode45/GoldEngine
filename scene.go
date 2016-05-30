@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"time"
 
 	sf "github.com/manyminds/gosfml"
 )
@@ -93,6 +94,7 @@ func SceneFromSceneDef(def *SceneDef) (*Scene, error) {
 		if err != nil {
 			return nil, err
 		}
+		entity.scene = &scene
 		entityMap[entityDef.Name] = entity
 		node := entityNode{
 			scene:  &scene,
@@ -136,6 +138,9 @@ func SceneFromSceneDef(def *SceneDef) (*Scene, error) {
 		}
 		entity.Transfrom.SetRotation(entityDef.Rotation)
 	}
+	//Scene Operations
+	collection := GenInputCollection()
+	scene.inputCollection = collection
 	return &scene, nil
 }
 
@@ -144,6 +149,50 @@ type entityNode struct {
 	parent   *entityNode
 	entity   *Entity
 	children []*entityNode
+}
+
+func (node *entityNode) Start() {
+	if node == nil {
+		return
+	}
+	if node.entity != nil {
+
+		node.entity.Start()
+	}
+	for _, child := range node.children {
+		c := child
+		c.Start()
+
+	}
+}
+
+func (node *entityNode) Awake() {
+	if node == nil {
+		return
+	}
+	if node.entity != nil {
+
+		node.entity.Awake()
+	}
+	fmt.Println("Waking Up entitynode	")
+	for _, child := range node.children {
+		c := child
+		c.Awake()
+	}
+}
+
+func (node *entityNode) Update(dur time.Duration) {
+	if node == nil {
+		return
+	}
+	if node.entity != nil {
+
+		node.entity.Update(dur)
+	}
+	for _, child := range node.children {
+		c := child
+		c.Update(dur)
+	}
 }
 
 func (node *entityNode) Draw(target sf.RenderTarget, renderStates sf.RenderStates) {
@@ -162,16 +211,56 @@ func (node *entityNode) Draw(target sf.RenderTarget, renderStates sf.RenderState
 
 //Scene : Everything that is being rendered
 type Scene struct {
-	Name          string
-	root          *entityNode
-	entityMap     map[string]*Entity
-	entityNodeMap map[string]*entityNode
-	entityDefMap  map[uint32]SceneDefEntity
+	Name            string
+	root            *entityNode
+	inputCollection *InputCollection
+	entityMap       map[string]*Entity
+	entityNodeMap   map[string]*entityNode
+	entityDefMap    map[uint32]SceneDefEntity
+
+	Awake  func()
+	Start  func()
+	Update func(time.Duration)
+}
+
+//GetInputCollection : Retruns the InputCollection for this scene
+func (s *Scene) GetInputCollection() *InputCollection {
+	return s.inputCollection
+}
+
+//GetEntityByName : Returns an entity in the scene with that name
+func (s *Scene) GetEntityByName(name string) (*Entity, bool) {
+	e, found := s.entityMap[name]
+	return e, found
 }
 
 //Draw : Draws the scene to a render target
 func (s *Scene) Draw(target sf.RenderTarget, renderStates sf.RenderStates) {
 	s.root.Draw(target, renderStates)
+}
+
+//Start : Starts all entities in the scene
+func (s *Scene) start() {
+	if s.Start != nil {
+		s.Start()
+	}
+	s.root.Start()
+}
+
+//Awake : Wakes up all entities in the scene
+func (s *Scene) awake() {
+	if s.Awake != nil {
+		s.Awake()
+	}
+	s.root.Awake()
+}
+
+//Update : Updates all entities in node
+func (s *Scene) update(dur time.Duration) {
+	if s.Update != nil {
+		s.Update(dur)
+	}
+	s.root.Update(dur)
 }
 
 //RootNodeName : Default Name for The rootnode of all scenes

@@ -6,19 +6,20 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-
-	sf "github.com/manyminds/gosfml"
+	"time"
 )
 
 var gRunning = true
 
+//GlobalGame : Currently running game
+var GlobalGame *Game
+
 //Game : Controls Actual Game
 type Game struct {
-	name   string
-	logger *log.Logger
-	window *window
-	scenes map[string]*Scene
-
+	name       string
+	window     *window
+	scenes     map[string]*Scene
+	logger     *log.Logger
 	GameWidth  float32
 	GameHeight float32
 
@@ -38,9 +39,8 @@ Name: App:NoName
 LogFile: os.Stdout
 */
 type GameConfig struct {
-	Name    string
-	LogFile io.Writer
-
+	Name                string
+	LogFile             io.Writer
 	PrefabsFolderName   string
 	ResourcesFolderName string
 	ScenesFolderName    string
@@ -67,7 +67,7 @@ func NewGame(config GameConfig, wc WindowConfig) *Game {
 	if logFile == nil {
 		logFile = os.Stdout
 	}
-	logger := log.New(logFile, "["+name+"]", log.Ldate)
+	Logger := log.New(logFile, "["+name+"]", log.Ldate)
 	prefabsFolderName := config.PrefabsFolderName
 	if prefabsFolderName == "" {
 		prefabsFolderName = DefaultPrefabsFolderName
@@ -96,7 +96,7 @@ func NewGame(config GameConfig, wc WindowConfig) *Game {
 
 	app := Game{
 		name:                name,
-		logger:              logger,
+		logger:              Logger,
 		window:              newWindow(wc),
 		PrefabsFolderName:   prefabsFolderName,
 		ResourcesFolderName: resourcesFolderName,
@@ -157,6 +157,17 @@ func (g *Game) ChangeScene(name string) {
 	g.window.scene = scene
 }
 
+//GetScene : Returns a scene
+func (g *Game) GetScene(name string) (*Scene, bool) {
+	scene, ok := g.scenes[name]
+	return scene, ok
+}
+
+//GetCurrentScene : Get the current rendered scene
+func (g *Game) GetCurrentScene() *Scene {
+	return g.window.scene
+}
+
 //ProcessArguments : Handles CommandLine Arguments
 func (g *Game) ProcessArguments() {
 	g.logger.Printf("Done")
@@ -164,22 +175,19 @@ func (g *Game) ProcessArguments() {
 
 //Run : Runs Game
 func (g *Game) Run() {
+	GlobalGame = g
 	window := g.window
 	renderWindow := g.window.renderWindow
+	g.window.scene.start()
+	g.window.scene.awake()
 	go window.Run()
+	now := time.Now()
 	for renderWindow.IsOpen() {
 		select {
 		case <-window.Ticker.C:
+			g.window.scene.update(time.Since(now))
+			now = time.Now()
 			//poll events
-			for event := renderWindow.PollEvent(); event != nil; event = renderWindow.PollEvent() {
-				switch ev := event.(type) {
-				case sf.EventKeyReleased:
-					switch ev.Code {
-					case sf.KeyEscape:
-						renderWindow.Close()
-					}
-				}
-			}
 
 		}
 	}

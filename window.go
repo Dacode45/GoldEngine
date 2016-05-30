@@ -1,6 +1,7 @@
 package goldengine
 
 import (
+	"fmt"
 	"time"
 
 	sf "github.com/manyminds/gosfml"
@@ -54,13 +55,26 @@ func newWindow(config WindowConfig) *window {
 }
 
 func (w *window) Run() {
+	if w.scene == nil {
+		panic(fmt.Errorf("No Scene"))
+	}
 	for w.renderWindow.IsOpen() {
 		select {
 		case <-w.Ticker.C:
-			w.renderWindow.Clear(w.ClearColor)
-			if w.scene != nil {
-				w.renderWindow.Draw(w.scene, sf.DefaultRenderStates())
+			for event := w.renderWindow.PollEvent(); event != nil; event = w.renderWindow.PollEvent() {
+				switch ev := event.(type) {
+				case sf.EventKeyPressed:
+					w.scene.inputCollection.KeyPressed(ev.Code)
+				case sf.EventKeyReleased:
+					w.scene.inputCollection.KeyReleased(ev.Code)
+				case sf.EventClosed:
+					w.renderWindow.Close()
+				}
 			}
+
+			w.renderWindow.Clear(w.ClearColor)
+			w.renderWindow.Draw(w.scene, sf.DefaultRenderStates())
+
 			w.renderWindow.Display()
 		}
 	}

@@ -9,10 +9,43 @@ import (
 type Component interface {
 	Awake()
 	Start()
+	Stop()
 	Update(time.Duration)
 	Sleep()
 	SetEntity(e *Entity)
 	GetEntity() *Entity
+}
+
+//BaseComponent : Struct implementing all Component Properties.
+//Allows the user to overload whatever methods they'd like
+type BaseComponent struct {
+	entity *Entity
+}
+
+//Awake : Called After Start and after sleep
+func (b *BaseComponent) Awake() {}
+
+//Start : Called before gameloop
+func (b *BaseComponent) Start() {}
+
+//Stop : Called When an entity is going to be destroyed
+//Once called Awake and Update are never called again
+func (b *BaseComponent) Stop() {}
+
+//Update : Do something given the time that's passed since last
+func (b *BaseComponent) Update(duration time.Duration) {}
+
+//Sleep : Pause Component
+func (b *BaseComponent) Sleep() {}
+
+//SetEntity : What Entity this component should acts on
+func (b *BaseComponent) SetEntity(e *Entity) {
+	b.entity = e
+}
+
+//GetEntity : What Entity this component acts on
+func (b *BaseComponent) GetEntity() *Entity {
+	return b.entity
 }
 
 // ComponentPrefab : Generates a Component with the Given name from the Arguments
@@ -25,7 +58,7 @@ type ComponentPrefab struct {
 func ComponentFromComponentPrefab(c ComponentPrefab) Component {
 	generator, ok := ComponentRegister.Get(c.Name)
 	if !ok {
-		return nil
+		panic("No component with the name " + c.Name)
 	}
 	return generator(c.Arguments)
 }

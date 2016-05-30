@@ -1,5 +1,13 @@
 {
   "Name":"paddle",
+  "Components":[
+    {
+      "Name":"paddle",
+      "Arguments":{
+        "Speed":400.0
+      }
+    }
+  ],
   "Transformer":{
     "Kind":"RectangleShape",
     "Arguments":{

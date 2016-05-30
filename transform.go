@@ -1,25 +1,6 @@
 package goldengine
 
-import (
-	"fmt"
-
-	sf "github.com/manyminds/gosfml"
-)
-
-//Vector2i : Wrapper arround sfml Vector
-type Vector2i sf.Vector2i
-
-//Vector2u : Wrapper arround sfml Vector
-type Vector2u sf.Vector2u
-
-//Vector2f : Wrapper arround sfml Vector
-type Vector2f sf.Vector2f
-
-//ZeroVector2f : Vector with X and Y set to 0.0
-var ZeroVector2f = Vector2f{X: 0.0, Y: 0.0}
-
-//Vector3f : Wrapper arround sfml Vector
-type Vector3f sf.Vector3f
+import sf "github.com/manyminds/gosfml"
 
 //Transformer : Wrapper arround sfml Transformer
 type Transformer interface {
@@ -110,7 +91,7 @@ func CircleShapeFromArguments(args map[string]interface{}) (Transformer, error) 
 	}
 	ApplyArgsToShape(shape, args)
 	if arg, ok := args["Radius"]; ok {
-		radius, ok := argAsFloat32(arg)
+		radius, ok := ArgAsFloat32(arg)
 		if ok {
 			shape.SetRadius(radius)
 		}
@@ -131,7 +112,7 @@ func RectangleShapeFromArguments(args map[string]interface{}) (Transformer, erro
 	}
 	ApplyArgsToShape(shape, args)
 	if arg, ok := args["Size"]; ok {
-		size, ok := argAsVector2f(arg)
+		size, ok := ArgAsVector2f(arg)
 		if ok {
 			shape.SetSize(size)
 		}
@@ -142,29 +123,28 @@ func RectangleShapeFromArguments(args map[string]interface{}) (Transformer, erro
 //ApplyArgsToShape : Sets Properties like OutlineThickness
 func ApplyArgsToShape(shape Shape, args map[string]interface{}) {
 	if arg, ok := args["OutlineThickness"]; ok {
-		thickness, ok := argAsFloat32(arg)
+		thickness, ok := ArgAsFloat32(arg)
 		if ok {
 			shape.SetOutlineThickness(thickness)
 		}
 	}
 
 	if arg, ok := args["OutlineColor"]; ok {
-		color, ok := argAsColor(arg)
+		color, ok := ArgAsColor(arg)
 		if ok {
 			shape.SetOutlineColor(color)
 		}
 	}
 
 	if arg, ok := args["Origin"]; ok {
-		origin, ok := argAsVector2f(arg)
+		origin, ok := ArgAsVector2f(arg)
 		if ok {
 			shape.SetOrigin(origin)
 		}
 	}
 
 	if arg, ok := args["FillColor"]; ok {
-		fmt.Println("HERE")
-		color, ok := argAsColor(arg)
+		color, ok := ArgAsColor(arg)
 		if ok {
 			shape.SetFillColor(color)
 		}
@@ -178,7 +158,8 @@ func TextFromArguments(args map[string]interface{}) (Transformer, error) {
 	return sf.NewText(nil)
 }
 
-func argAsFloat32(arg interface{}) (float32, bool) {
+//ArgAsFloat32 Converts an interface from a JSON Parser to a float32
+func ArgAsFloat32(arg interface{}) (float32, bool) {
 	value, ok := arg.(float64)
 	if ok {
 		return float32(value), ok
@@ -186,7 +167,8 @@ func argAsFloat32(arg interface{}) (float32, bool) {
 	return 0.0, ok
 }
 
-func argAsVector2f(arg interface{}) (sf.Vector2f, bool) {
+//ArgAsVector2f Converts an interface from a JSON Parser to a Vector2f
+func ArgAsVector2f(arg interface{}) (sf.Vector2f, bool) {
 	value, ok := arg.(map[string]interface{})
 	if ok {
 		return sf.Vector2f{X: float32(value["X"].(float64)), Y: float32(value["Y"].(float64))}, ok
@@ -194,7 +176,8 @@ func argAsVector2f(arg interface{}) (sf.Vector2f, bool) {
 	return sf.Vector2f{}, ok
 }
 
-func argAsColor(arg interface{}) (sf.Color, bool) {
+//ArgAsColor Converts an interface from a JSON Parser to a Color
+func ArgAsColor(arg interface{}) (sf.Color, bool) {
 	value, ok := arg.(map[string]interface{})
 	if ok {
 		return sf.Color{
