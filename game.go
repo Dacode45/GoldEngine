@@ -16,18 +16,21 @@ var GlobalGame *Game
 
 //Game : Controls Actual Game
 type Game struct {
-	name          string
-	window        *Window
-	physicsEngine *PhysicsEngine
-	scenes        map[string]*Scene
-	logger        *log.Logger
-
+	name                string
+	window              *Window
+	physicsEngine       *PhysicsEngine
+	scenes              map[string]*Scene
+	logger              *log.Logger
+	debug               bool
+	PostOffice          *PostOffice
 	PrefabsFolderName   string
 	ResourcesFolderName string
 	ScenesFolderName    string
 	prefabsFolder       []os.FileInfo
 	resourcesFolder     []os.FileInfo
 	scenesFolder        []os.FileInfo
+	//Composed Structs
+	BasicMailBox //TODO : Use this for RPC
 }
 
 // GameConfig : Adjust Paramaters for an App
@@ -43,6 +46,7 @@ type GameConfig struct {
 	PrefabsFolderName   string
 	ResourcesFolderName string
 	ScenesFolderName    string
+	Debug               bool
 }
 
 const (
@@ -101,14 +105,18 @@ func NewGame(config GameConfig, wc WindowConfig, pc PhysicsEngineConfig) *Game {
 		PrefabsFolderName:   prefabsFolderName,
 		ResourcesFolderName: resourcesFolderName,
 		ScenesFolderName:    scenesFolderName,
-
-		prefabsFolder:   prefabsFolder,
-		resourcesFolder: resourcesFolder,
-		scenesFolder:    scenesFolder,
-
-		scenes: make(map[string]*Scene),
+		PostOffice:          NewPostOffice(),
+		prefabsFolder:       prefabsFolder,
+		resourcesFolder:     resourcesFolder,
+		scenesFolder:        scenesFolder,
+		debug:               config.Debug,
+		scenes:              make(map[string]*Scene),
 	}
-
+	app.PostOffice.Add(app.window)
+	app.PostOffice.Add(app.physicsEngine)
+	if app.debug {
+		app.PostOffice.logger = app.logger
+	}
 	return &app
 }
 
@@ -124,8 +132,13 @@ func (g *Game) Init() {
 		if err != nil {
 			panic(err)
 		}
+		g.PostOffice.Broadcast(Message{
+			Message: SceneLoadedMSG,
+			Content: scene,
+		})
 		g.logger.Printf("Scene %q loaded", scene.Name)
 	}
+	g.window.Init()
 }
 
 //GetSize : Get the size of the game window
@@ -161,8 +174,10 @@ func (g *Game) ChangeScene(name string) {
 	if !ok {
 		panic("No Scene with that name")
 	}
-	g.window.ChangeScene(scene)
-	g.physicsEngine.ChangeScene(scene)
+	g.PostOffice.Broadcast(Message{
+		Message: SceneChangedMSG,
+		Content: scene,
+	})
 }
 
 //GetScene : Returns a scene

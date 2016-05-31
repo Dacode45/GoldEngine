@@ -46,7 +46,6 @@ func (comp *PaddleComponent) MoveUp() {
 
 //StopMovement : Paddle Won't move anymore
 func (comp *PaddleComponent) StopMovement() {
-	fmt.Println("Stopped Movement")
 	comp.direction = 0
 }
 

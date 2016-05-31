@@ -1,7 +1,11 @@
 package goldengine
 
-import "github.com/vova616/chipmunk"
-import "github.com/vova616/chipmunk/vect"
+import (
+	"errors"
+
+	"github.com/vova616/chipmunk"
+	"github.com/vova616/chipmunk/vect"
+)
 
 //ColliderPrefab : Generates a Collider (chipmunk body) from configuration
 type ColliderPrefab struct {
@@ -24,7 +28,7 @@ func ColliderFromColliderPrefab(c ColliderPrefab) (*chipmunk.Body, error) {
 	var collider *chipmunk.Body
 	generator, ok := ColliderGenerators[c.Kind]
 	if !ok {
-		return nil, nil
+		return nil, errors.New("No collider with that name")
 	}
 	collider, err := generator(c.Arguments)
 	return collider, err

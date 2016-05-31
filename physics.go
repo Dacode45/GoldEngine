@@ -1,13 +1,14 @@
 package goldengine
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/vova616/chipmunk"
 	"github.com/vova616/chipmunk/vect"
-)
 
-import sf "github.com/manyminds/gosfml"
+	sf "github.com/manyminds/gosfml"
+)
 
 //PhysicsEngineConfig : Configuration for the Physics Engine
 type PhysicsEngineConfig struct {
@@ -21,12 +22,27 @@ type PhysicsEngine struct {
 	debugEntities []*Entity
 	space         *chipmunk.Space
 	scene         *Scene
+	BasicMailBox
+}
+
+//RecieveMessage : RecieveMessage function for Physics Engine
+func (engine *PhysicsEngine) RecieveMessage(msg Message) {
+	switch msg.Message {
+	case SceneChangedMSG:
+		engine.ChangeScene(msg.Content.(*Scene))
+	case SceneAddedEntityMSG:
+		engine.AddEntity(msg.Content.(*Entity))
+	}
 }
 
 //ChangeScene : Changes the Current Scene
 func (engine *PhysicsEngine) ChangeScene(s *Scene) {
 	//TODO : Remove all debug components
+
+	office := engine.GetOffice()
+	office.Subscribe(s.GetAddress(), engine.GetAddress(), SceneAddedEntityMSG)
 	engine.scene = s
+	engine.AddEntities(s.GetEntities())
 }
 
 //AddEntity : Add Entity to phsics space
@@ -35,14 +51,23 @@ func (engine *PhysicsEngine) AddEntity(e *Entity) {
 		engine.space.AddBody(e.Collider)
 	}
 	if engine.debug {
+		engine.makeDebugEntity(e)
+	}
+}
 
+//AddEntities : Convienece function to add a bunch of entities
+func (engine *PhysicsEngine) AddEntities(list []*Entity) {
+	for _, e := range list {
+		engine.AddEntity(e)
 	}
 }
 
 func (engine *PhysicsEngine) makeDebugEntity(e *Entity) {
-	if engine.scene == nil {
+	if engine.scene == nil || e.Collider == nil {
+		fmt.Println(e.Collider)
 		return
 	}
+	fmt.Println("Adding Entity", e.Name)
 	debugRoot := NewEntity()
 	for _, shape := range e.Collider.Shapes {
 
@@ -52,11 +77,18 @@ func (engine *PhysicsEngine) makeDebugEntity(e *Entity) {
 			if err != nil {
 				continue
 			}
+			fmt.Println(shapeClass.Radius)
 			circle.SetRadius(float32(shapeClass.Radius))
+			// pos := e.Collider.Position()
+			// vec := ChipmunkVectorToVector(pos)
+			// circle.SetPosition(vec.ToSFML())
+			circle.SetPosition(sf.Vector2f{X: 20, Y: 20})
 			circle.SetFillColor(sf.ColorYellow())
 			debug := NewEntity()
 			debug.Transfrom = circle
 			debugRoot.AddChild(debug)
+			engine.scene.AddEntity(debug)
+			engine.scene.SetZIndex(debug.Name, 1)
 		case *chipmunk.BoxShape:
 			rectangle, err := sf.NewRectangleShape()
 			if err != nil {

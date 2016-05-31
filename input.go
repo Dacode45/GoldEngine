@@ -6,20 +6,31 @@ import (
 	sf "github.com/manyminds/gosfml"
 )
 
+//KeyReleasedMSG : KeyWasPressed
+const KeyReleasedMSG = MessageType("KeyReleased")
+
+//KeyPressedMSG : KeyWasReleased
+const KeyPressedMSG = MessageType("KeyPressed")
+
 var keyboardSetCounter uint32 = 1
 
 //InputCollection : Collection of Sets handling Mouse and Keyboard Input.
 //Used to emulate keyboard input.
 type InputCollection struct {
 	keyboardSets map[uint32]*KeyboardSet
+	BasicMailBox
 }
 
-//GenInputCollection : Convienece function for making an InputCollection
-func GenInputCollection() *InputCollection {
-	collection := &InputCollection{
-		keyboardSets: make(map[uint32]*KeyboardSet),
+//RecieveMessage : Fuffils the MailBox Requirement
+func (collection *InputCollection) RecieveMessage(msg Message) {
+	switch msg.Message {
+	case KeyPressedMSG:
+		code := msg.Content.(*sf.KeyCode)
+		collection.KeyPressed(*code)
+	case KeyReleasedMSG:
+		code := msg.Content.(*sf.KeyCode)
+		collection.KeyReleased(*code)
 	}
-	return collection
 }
 
 //KeyPressed : Puts KeyPressed
@@ -66,6 +77,14 @@ func (collection *InputCollection) InstallKeyboardSet(set *KeyboardSet) {
 //UninstallKeyboardSet : Remove set from collection
 func (collection *InputCollection) UninstallKeyboardSet(set *KeyboardSet) {
 	delete(collection.keyboardSets, set.id)
+}
+
+//GenInputCollection : Convienece function for making an InputCollection
+func GenInputCollection() *InputCollection {
+	collection := &InputCollection{
+		keyboardSets: make(map[uint32]*KeyboardSet),
+	}
+	return collection
 }
 
 //KeyboardSet : Set of KeyboardHandlers. Technically only need 1 but it's usefull

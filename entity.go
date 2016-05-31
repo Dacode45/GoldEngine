@@ -1,14 +1,13 @@
 package goldengine
 
 import (
+	"fmt"
 	"strconv"
 	"sync/atomic"
 	"time"
 
-	sf "github.com/manyminds/gosfml"
+	"github.com/vova616/chipmunk"
 )
-
-import "github.com/vova616/chipmunk"
 
 //EntityPrefab : Information Required to Create an Entity from JSON Prefab
 type EntityPrefab struct {
@@ -75,6 +74,9 @@ func (e *Entity) Stop() {
 
 //AddChild : Adds A child to the entity
 func (e *Entity) AddChild(child *Entity) {
+	if e.children == nil {
+		e.children = make(map[uint32]*Entity)
+	}
 	child.parent = e
 	e.children[child.id] = child
 }
@@ -121,8 +123,9 @@ func EntityFromEntityPrefab(prefab EntityPrefab) *Entity {
 		panic(err)
 	}
 	if prefab.Collider.Kind != "" {
-		prefab.Collider = ColliderPrefabFromTransformPrefab(prefab.Collider, prefab.Transformer, e.Transfrom)
+		fmt.Println("Getting Collider")
 		e.Collider, err = ColliderFromColliderPrefab(prefab.Collider)
+		fmt.Println(e.Collider)
 		if err != nil {
 			panic(err)
 		}
@@ -135,43 +138,4 @@ func EntityFromEntityPrefab(prefab EntityPrefab) *Entity {
 
 	}
 	return e
-}
-
-//ColliderPrefabFromTransformPrefab : Copies arguments from Transforms
-func ColliderPrefabFromTransformPrefab(collider ColliderPrefab, transform TransformerPrefab, transformer Transformer) ColliderPrefab {
-	if transform.Kind == collider.Kind {
-		if _, has := collider.Arguments["Radius"]; !has {
-			if _, ok := transform.Arguments["Radius"]; ok {
-				collider.Arguments["Radius"] = transform.Arguments["Radius"]
-			} else {
-				shape, ok := transformer.(*sf.CircleShape)
-				if !ok {
-					panic("Not a circle shape")
-				}
-				collider.Arguments["Radius"] = float64(shape.GetRadius() / scale)
-			}
-		}
-	}
-	if _, has := collider.Arguments["Position"]; !has {
-		if _, ok := transform.Arguments["Position"]; ok {
-			collider.Arguments["Position"] = transform.Arguments["Position"]
-		} else {
-			vec := Vector2fToVector(transformer.GetPosition())
-			collider.Arguments["Position"] = map[string]float64{
-				"X": float64(vec.X), "Y": float64(vec.Y),
-			}
-		}
-	}
-	if _, has := collider.Arguments["Size"]; !has {
-		if _, ok := transform.Arguments["Size"]; ok {
-			collider.Arguments["Size"] = transform.Arguments["Size"]
-		} else {
-			shape := transformer.(*sf.RectangleShape)
-			vec := Vector2fToVector(shape.GetSize())
-			collider.Arguments["Size"] = map[string]float64{
-				"X": float64(vec.X), "Y": float64(vec.Y),
-			}
-		}
-	}
-	return collider
 }

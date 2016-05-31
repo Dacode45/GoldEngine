@@ -8,13 +8,6 @@
       }
     }
   ],
-  "Collider":{
-    "Kind": "CircleCollider",
-    "Arguments":{
-      "Elasticity":0.95,
-      "Mass":1
-    }
-  },
   "Transformer":{
     "Kind":"RectangleShape",
     "Arguments":{

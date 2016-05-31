@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"sort"
 	"time"
 
 	sf "github.com/manyminds/gosfml"
@@ -73,7 +74,6 @@ func ParseSceneDef(g *Game, sceneName, sceneString string) (*SceneDef, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(rawJSON.String())
 	var sceneDef SceneDef
 	err = json.Unmarshal(rawJSON.Bytes(), &sceneDef)
 	if err != nil {
@@ -93,6 +93,7 @@ func SceneFromSceneDef(def *SceneDef) (*Scene, error) {
 	scene := Scene{
 		Name: def.Name,
 		root: &entityNode{
+			entity:   NewEntity(),
 			children: make([]*entityNode, 0),
 		},
 		entityMap:     entityMap,
@@ -158,14 +159,23 @@ func SceneFromSceneDef(def *SceneDef) (*Scene, error) {
 		entity.Transfrom.SetRotation(entityDef.Rotation)
 	}
 	//Scene Operations
+
 	return &scene, nil
 }
 
 type entityNode struct {
 	scene    *Scene
 	parent   *entityNode
+	zIndex   int
 	entity   *Entity
 	children []*entityNode
+}
+
+func (node *entityNode) AddChild(child *entityNode) {
+	if node.children == nil {
+		node.children = make([]*entityNode, 0)
+	}
+	node.children = append(node.children, child)
 }
 
 func (node *entityNode) Start() {
@@ -213,7 +223,7 @@ func (node *entityNode) Update(dur time.Duration) {
 }
 
 func (node *entityNode) Draw(target sf.RenderTarget, renderStates sf.RenderStates) {
-	if node.entity != nil {
+	if node.entity != nil && node.entity.Transfrom != nil {
 		// transform := node.entity.Transfrom.GetTransform()
 		// combinedTransform := renderStates.Transform.Combine(&transform)
 		// renderStates.Transform = *combinedTransform
@@ -225,6 +235,15 @@ func (node *entityNode) Draw(target sf.RenderTarget, renderStates sf.RenderState
 		child.Draw(target, renderStates)
 	}
 }
+
+//SceneLoadedMSG : Scene Was loaded returns pointer to scene
+const SceneLoadedMSG = MessageType("SceneLoaded")
+
+//SceneChangedMSG : Game has changed scene
+const SceneChangedMSG = MessageType("SceneChanged")
+
+//SceneAddedEntityMSG : Added Entity to scene. Sends pointer to entity
+const SceneAddedEntityMSG = MessageType("SceneAddedEntity")
 
 //Scene : Everything that is being rendered
 type Scene struct {
@@ -238,6 +257,8 @@ type Scene struct {
 	Awake  func()
 	Start  func()
 	Update func(time.Duration)
+
+	BasicMailBox
 }
 
 //AddEntity : AddEntity to the Scene
@@ -248,18 +269,37 @@ func (s *Scene) AddEntity(e *Entity) {
 	node := &entityNode{
 		entity: e,
 	}
+	s.root.children = append(s.root.children, node)
 	s.entityNodeMap[e.Name] = node
 	s.entityMap[e.id] = e
 	if e.parent != nil {
 		parent, ok := s.entityNodeMap[e.parent.Name]
 		if ok {
-			parent.children = append(parent.children, node)
+			parent.AddChild(node)
+		} else {
+			s.root.AddChild(node)
 		}
+	} else {
+		s.root.AddChild(node)
 	}
 	for _, child := range e.children {
 		s.AddEntity(child)
 	}
+	s.PostMessage(Message{
+		Message: SceneAddedEntityMSG,
+		Content: e,
+	})
+}
 
+//GetEntities : Gets all entities in scene
+func (s *Scene) GetEntities() []*Entity {
+	list := make([]*Entity, len(s.entityMap))
+	counter := 0
+	for _, e := range s.entityMap {
+		list[counter] = e
+		counter = counter + 1
+	}
+	return list
 }
 
 //RecalculateScale : Changes the of every entity
@@ -275,9 +315,29 @@ func (s *Scene) GetEntityByName(name string) (*Entity, bool) {
 	return node.entity, found
 }
 
+//SetZIndex : SetsZIndex of a node
+func (s *Scene) SetZIndex(name string, index int) {
+	node, found := s.entityNodeMap[name]
+	if found {
+		node.zIndex = index
+	}
+}
+
 //Draw : Draws the scene to a render target
 func (s *Scene) Draw(target sf.RenderTarget, renderStates sf.RenderStates) {
-	s.root.Draw(target, renderStates)
+	entities := make([]*entityNode, len(s.entityNodeMap))
+	counter := 0
+	for _, e := range s.entityNodeMap {
+		entities[counter] = e
+		counter = counter + 1
+	}
+	sort.Sort(byZIndex(entities))
+	for _, e := range entities {
+		if e.entity != nil {
+
+			target.Draw(e.entity.Transfrom, renderStates)
+		}
+	}
 }
 
 //Start : Starts all entities in the scene
@@ -304,5 +364,22 @@ func (s *Scene) update(dur time.Duration) {
 	s.root.Update(dur)
 }
 
+//RecieveMessage : Handles Message
+func (s *Scene) RecieveMessage(msg Message) {
+
+}
+
 //RootNodeName : Default Name for The rootnode of all scenes
 const RootNodeName = "ROOT"
+
+type byZIndex []*entityNode
+
+func (s byZIndex) Len() int {
+	return len(s)
+}
+func (s byZIndex) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s byZIndex) Less(i, j int) bool {
+	return s[i].zIndex < s[j].zIndex
+}

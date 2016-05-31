@@ -1,5 +1,14 @@
 {
   "Name":"ball",
+  "Collider":{
+    "Kind": "CircleShape",
+    "Arguments":{
+
+      "Radius":10.0,
+      "Elasticity":0.95,
+      "Mass":1
+    }
+  },
   "Transformer":{
     "Kind":"CircleShape",
     "Arguments":{
