@@ -15,11 +15,13 @@ type WindowConfig struct {
 	Title      string
 }
 
-type window struct {
-	Ticker       *time.Ticker
-	ClearColor   sf.Color
-	renderWindow *sf.RenderWindow
-	scene        *Scene
+//Window : Wrapper around a SFML RenderWindow Handles input and drawing scenes
+type Window struct {
+	Ticker          *time.Ticker
+	ClearColor      sf.Color
+	renderWindow    *sf.RenderWindow
+	scene           *Scene
+	inputCollection *InputCollection
 }
 
 const (
@@ -31,7 +33,7 @@ const (
 	DefaultTitle = "Gold Engine"
 )
 
-func newWindow(config WindowConfig) *window {
+func newWindow(config WindowConfig) *Window {
 	gameWidth := config.Width
 	if gameWidth <= 0 {
 		gameWidth = DefaultGameWidth
@@ -46,15 +48,27 @@ func newWindow(config WindowConfig) *window {
 	if gameTitle == "" {
 		gameTitle = DefaultTitle
 	}
-
-	return &window{
-		renderWindow: sf.NewRenderWindow(sf.VideoMode{Width: gameWidth, Height: gameHeight, BitsPerPixel: 32}, gameTitle, sf.StyleDefault, sf.DefaultContextSettings()),
-		Ticker:       time.NewTicker(time.Second / 60),
-		ClearColor:   config.ClearColor,
+	NewScreenWidth(gameWidth)
+	return &Window{
+		renderWindow:    sf.NewRenderWindow(sf.VideoMode{Width: gameWidth, Height: gameHeight, BitsPerPixel: 32}, gameTitle, sf.StyleDefault, sf.DefaultContextSettings()),
+		Ticker:          time.NewTicker(time.Second / 60),
+		ClearColor:      config.ClearColor,
+		inputCollection: GenInputCollection(),
 	}
 }
 
-func (w *window) Run() {
+//GetInputCollection : Retruns the InputCollection for this scene
+func (w *Window) GetInputCollection() *InputCollection {
+	return w.inputCollection
+}
+
+//ChangeScene : Changes current scene
+func (w *Window) ChangeScene(s *Scene) {
+	w.scene = s
+}
+
+//Run : Plays the window
+func (w *Window) Run() {
 	if w.scene == nil {
 		panic(fmt.Errorf("No Scene"))
 	}
@@ -64,11 +78,13 @@ func (w *window) Run() {
 			for event := w.renderWindow.PollEvent(); event != nil; event = w.renderWindow.PollEvent() {
 				switch ev := event.(type) {
 				case sf.EventKeyPressed:
-					w.scene.inputCollection.KeyPressed(ev.Code)
+					w.inputCollection.KeyPressed(ev.Code)
 				case sf.EventKeyReleased:
-					w.scene.inputCollection.KeyReleased(ev.Code)
+					w.inputCollection.KeyReleased(ev.Code)
 				case sf.EventClosed:
 					w.renderWindow.Close()
+				case sf.EventResized:
+					NewScreenWidth(ev.Width)
 				}
 			}
 

@@ -1,15 +1,21 @@
 package goldengine
 
 import (
+	"strconv"
 	"sync/atomic"
 	"time"
+
+	sf "github.com/manyminds/gosfml"
 )
+
+import "github.com/vova616/chipmunk"
 
 //EntityPrefab : Information Required to Create an Entity from JSON Prefab
 type EntityPrefab struct {
 	Name        string
 	Components  []ComponentPrefab
 	Transformer TransformerPrefab
+	Collider    ColliderPrefab
 }
 
 //Entity : Entity
@@ -22,6 +28,7 @@ type Entity struct {
 	children    map[uint32]*Entity
 	components  []Component
 	Transfrom   Transformer
+	Collider    *chipmunk.Body
 	scene       *Scene
 	started     bool
 	awake       bool
@@ -66,8 +73,15 @@ func (e *Entity) Stop() {
 	}
 }
 
+//AddChild : Adds A child to the entity
+func (e *Entity) AddChild(child *Entity) {
+	child.parent = e
+	e.children[child.id] = child
+}
+
 //RemoveChild : Removes Child Enttiy
 func (e *Entity) RemoveChild(child *Entity) {
+	child.parent = nil
 	delete(e.children, child.id)
 }
 
@@ -79,6 +93,11 @@ func (e *Entity) AddComponent(comp Component) {
 	}
 }
 
+//RecalculateScale : Changes the size of sfml and chipmunk objects
+func (e *Entity) RecalculateScale() {
+
+}
+
 var entityCounter uint32 = 1
 
 //NewEntity : Create a new Entity
@@ -87,6 +106,7 @@ func NewEntity() *Entity {
 	atomic.AddUint32(&entityCounter, 1)
 	return &Entity{
 		id:          id,
+		Name:        strconv.Itoa(int(id)),
 		KeyboardSet: GenKeyboardSet(),
 	}
 }
@@ -100,8 +120,13 @@ func EntityFromEntityPrefab(prefab EntityPrefab) *Entity {
 	if err != nil {
 		panic(err)
 	}
-	e.Transfrom.Rotate(1.0)
-
+	if prefab.Collider.Kind != "" {
+		prefab.Collider = ColliderPrefabFromTransformPrefab(prefab.Collider, prefab.Transformer, e.Transfrom)
+		e.Collider, err = ColliderFromColliderPrefab(prefab.Collider)
+		if err != nil {
+			panic(err)
+		}
+	}
 	e.components = make([]Component, 0)
 	for _, p := range prefab.Components {
 
@@ -110,4 +135,43 @@ func EntityFromEntityPrefab(prefab EntityPrefab) *Entity {
 
 	}
 	return e
+}
+
+//ColliderPrefabFromTransformPrefab : Copies arguments from Transforms
+func ColliderPrefabFromTransformPrefab(collider ColliderPrefab, transform TransformerPrefab, transformer Transformer) ColliderPrefab {
+	if transform.Kind == collider.Kind {
+		if _, has := collider.Arguments["Radius"]; !has {
+			if _, ok := transform.Arguments["Radius"]; ok {
+				collider.Arguments["Radius"] = transform.Arguments["Radius"]
+			} else {
+				shape, ok := transformer.(*sf.CircleShape)
+				if !ok {
+					panic("Not a circle shape")
+				}
+				collider.Arguments["Radius"] = float64(shape.GetRadius() / scale)
+			}
+		}
+	}
+	if _, has := collider.Arguments["Position"]; !has {
+		if _, ok := transform.Arguments["Position"]; ok {
+			collider.Arguments["Position"] = transform.Arguments["Position"]
+		} else {
+			vec := Vector2fToVector(transformer.GetPosition())
+			collider.Arguments["Position"] = map[string]float64{
+				"X": float64(vec.X), "Y": float64(vec.Y),
+			}
+		}
+	}
+	if _, has := collider.Arguments["Size"]; !has {
+		if _, ok := transform.Arguments["Size"]; ok {
+			collider.Arguments["Size"] = transform.Arguments["Size"]
+		} else {
+			shape := transformer.(*sf.RectangleShape)
+			vec := Vector2fToVector(shape.GetSize())
+			collider.Arguments["Size"] = map[string]float64{
+				"X": float64(vec.X), "Y": float64(vec.Y),
+			}
+		}
+	}
+	return collider
 }

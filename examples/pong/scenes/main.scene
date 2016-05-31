@@ -13,8 +13,8 @@
         }
       },
       "Position":{
-        "X":22.5,
-        "Y":{{ divide .GameHeight 2 }}
+        "X":2,
+        "Y":{{divide gameHeight 2}}
       }
     },
     {
@@ -29,16 +29,16 @@
         }
       },
       "Position":{
-        "X":{{ subtract .GameWidth 22.5}},
-        "Y":{{ divide .GameHeight 2}}
+        "X":{{ subtract gameWidth 2}},
+        "Y":{{ divide gameHeight 2}}
       }
     },
     {
       "Name":"ball",
       "Prefab":"ball",
       "Position":{
-        "X":{{divide .GameWidth 2}},
-        "Y":{{ divide .GameHeight 2}}
+        "X":{{50}},
+        "Y":{{ divide gameHeight 2}}
       }
     }
   ]

@@ -16,12 +16,11 @@ var GlobalGame *Game
 
 //Game : Controls Actual Game
 type Game struct {
-	name       string
-	window     *window
-	scenes     map[string]*Scene
-	logger     *log.Logger
-	GameWidth  float32
-	GameHeight float32
+	name          string
+	window        *Window
+	physicsEngine *PhysicsEngine
+	scenes        map[string]*Scene
+	logger        *log.Logger
 
 	PrefabsFolderName   string
 	ResourcesFolderName string
@@ -56,7 +55,7 @@ const (
 )
 
 //NewGame : Returns an app.
-func NewGame(config GameConfig, wc WindowConfig) *Game {
+func NewGame(config GameConfig, wc WindowConfig, pc PhysicsEngineConfig) *Game {
 	//Set  NewSoundBufferFromSamples
 	name := config.Name
 	if name == "" {
@@ -98,6 +97,7 @@ func NewGame(config GameConfig, wc WindowConfig) *Game {
 		name:                name,
 		logger:              Logger,
 		window:              newWindow(wc),
+		physicsEngine:       newPhysicsEngine(pc),
 		PrefabsFolderName:   prefabsFolderName,
 		ResourcesFolderName: resourcesFolderName,
 		ScenesFolderName:    scenesFolderName,
@@ -109,9 +109,6 @@ func NewGame(config GameConfig, wc WindowConfig) *Game {
 		scenes: make(map[string]*Scene),
 	}
 
-	windowSize := app.window.renderWindow.GetSize()
-	app.GameWidth = float32(windowSize.X)
-	app.GameHeight = float32(windowSize.Y)
 	return &app
 }
 
@@ -131,6 +128,11 @@ func (g *Game) Init() {
 	}
 }
 
+//GetSize : Get the size of the game window
+func (g *Game) GetSize() Vector {
+	return Vector2uToVector(g.GetWindow().renderWindow.GetSize())
+}
+
 //LoadSceneFromFile : Gets Scene from File
 func (g *Game) LoadSceneFromFile(path string) (*Scene, error) {
 	dat, err := ioutil.ReadFile(path)
@@ -148,13 +150,19 @@ func (g *Game) LoadSceneFromFile(path string) (*Scene, error) {
 
 }
 
+//GetWindow : Returns the window of a game
+func (g *Game) GetWindow() *Window {
+	return g.window
+}
+
 //ChangeScene : Loads a new scne
 func (g *Game) ChangeScene(name string) {
 	scene, ok := g.scenes[name]
 	if !ok {
 		panic("No Scene with that name")
 	}
-	g.window.scene = scene
+	g.window.ChangeScene(scene)
+	g.physicsEngine.ChangeScene(scene)
 }
 
 //GetScene : Returns a scene

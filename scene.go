@@ -16,8 +16,8 @@ type SceneDefEntity struct {
 	Parent             string
 	Prefab             string
 	TransformArguments map[string]interface{}
-	Position           sf.Vector2f
-	Scale              sf.Vector2f
+	Position           Vector
+	Scale              Vector
 	Rotation           float32
 }
 
@@ -49,12 +49,31 @@ type SceneDef struct {
 
 //ParseSceneDef : Get SceneDef from string definition
 func ParseSceneDef(g *Game, sceneName, sceneString string) (*SceneDef, error) {
+	//SceneFuncMap : Functions that can be used in a Scene Def template
+	var SceneFuncMap = template.FuncMap{
+		"gameHeight": func() float32 {
+			pixelHeight := float32(g.GetWindow().renderWindow.GetSize().Y)
+			unit := pixelHeight / scale
+			return unit
+		},
+		"gameWidth": func() float32 {
+			return 100
+		},
+		"divide": func(a, b float32) float32 {
+			return a / b
+		},
+		"subtract": func(a, b float32) float32 {
+			return a - b
+		},
+	}
+
 	t := template.Must(template.New(sceneName).Funcs(SceneFuncMap).Parse(sceneString))
 	var rawJSON bytes.Buffer
 	err := t.Execute(&rawJSON, g)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(rawJSON.String())
 	var sceneDef SceneDef
 	err = json.Unmarshal(rawJSON.Bytes(), &sceneDef)
 	if err != nil {
@@ -68,7 +87,7 @@ func ParseSceneDef(g *Game, sceneName, sceneString string) (*SceneDef, error) {
 
 //SceneFromSceneDef : Creates a new scene given a definition
 func SceneFromSceneDef(def *SceneDef) (*Scene, error) {
-	entityMap := make(map[string]*Entity)
+	entityMap := make(map[uint32]*Entity)
 	entityNodeMap := make(map[string]*entityNode)
 	entityDefMap := make(map[uint32]SceneDefEntity)
 	scene := Scene{
@@ -84,7 +103,7 @@ func SceneFromSceneDef(def *SceneDef) (*Scene, error) {
 	scene.root.scene = &scene
 	for i, entityDef := range def.Entities {
 		//Create Entity
-		if _, ok := entityMap[entityDef.Name]; ok {
+		if _, ok := entityNodeMap[entityDef.Name]; ok {
 			return nil, fmt.Errorf("Entities in SceneDef must have a unique name: %s", entityDef.Name)
 		}
 		if entityDef.Name == RootNodeName {
@@ -95,7 +114,7 @@ func SceneFromSceneDef(def *SceneDef) (*Scene, error) {
 			return nil, err
 		}
 		entity.scene = &scene
-		entityMap[entityDef.Name] = entity
+		entityMap[entity.id] = entity
 		node := entityNode{
 			scene:  &scene,
 			entity: entity,
@@ -106,8 +125,8 @@ func SceneFromSceneDef(def *SceneDef) (*Scene, error) {
 	//Node Operations
 	for _, entityDef := range def.Entities {
 		//Node Operations
-		entity := entityMap[entityDef.Name]
 		node := entityNodeMap[entityDef.Name]
+		entity := entityMap[node.entity.id]
 		//Add Parent and Children
 		if entityDef.Name == "" {
 			scene.root.children = append(scene.root.children, node)
@@ -122,7 +141,7 @@ func SceneFromSceneDef(def *SceneDef) (*Scene, error) {
 			parentNode.children = append(parentNode.children, node)
 			node.parent = parentNode
 
-			parent, ok := entityMap[entityDef.Parent]
+			parent, ok := entityMap[parentNode.entity.id]
 			if ok {
 				if parent.children == nil {
 					parent.children = make(map[uint32]*Entity)
@@ -132,15 +151,13 @@ func SceneFromSceneDef(def *SceneDef) (*Scene, error) {
 			}
 		}
 		//Set Transform Properties
-		entity.Transfrom.SetPosition(entityDef.Position)
-		if entityDef.Scale != sf.Vector2f(ZeroVector2f) {
-			entity.Transfrom.SetScale(entityDef.Scale)
+		entity.Transfrom.SetPosition(entityDef.Position.ToSFML())
+		if entityDef.Scale != ZeroVector {
+			entity.Transfrom.SetScale(entityDef.Scale.ToSFML())
 		}
 		entity.Transfrom.SetRotation(entityDef.Rotation)
 	}
 	//Scene Operations
-	collection := GenInputCollection()
-	scene.inputCollection = collection
 	return &scene, nil
 }
 
@@ -211,27 +228,51 @@ func (node *entityNode) Draw(target sf.RenderTarget, renderStates sf.RenderState
 
 //Scene : Everything that is being rendered
 type Scene struct {
-	Name            string
-	root            *entityNode
-	inputCollection *InputCollection
-	entityMap       map[string]*Entity
-	entityNodeMap   map[string]*entityNode
-	entityDefMap    map[uint32]SceneDefEntity
+	Name          string
+	root          *entityNode
+	game          *Game
+	entityMap     map[uint32]*Entity
+	entityNodeMap map[string]*entityNode
+	entityDefMap  map[uint32]SceneDefEntity
 
 	Awake  func()
 	Start  func()
 	Update func(time.Duration)
 }
 
-//GetInputCollection : Retruns the InputCollection for this scene
-func (s *Scene) GetInputCollection() *InputCollection {
-	return s.inputCollection
+//AddEntity : AddEntity to the Scene
+func (s *Scene) AddEntity(e *Entity) {
+	if _, ok := s.entityMap[e.id]; ok {
+		return
+	}
+	node := &entityNode{
+		entity: e,
+	}
+	s.entityNodeMap[e.Name] = node
+	s.entityMap[e.id] = e
+	if e.parent != nil {
+		parent, ok := s.entityNodeMap[e.parent.Name]
+		if ok {
+			parent.children = append(parent.children, node)
+		}
+	}
+	for _, child := range e.children {
+		s.AddEntity(child)
+	}
+
+}
+
+//RecalculateScale : Changes the of every entity
+func (s *Scene) RecalculateScale() {
+	for _, e := range s.entityMap {
+		e.RecalculateScale()
+	}
 }
 
 //GetEntityByName : Returns an entity in the scene with that name
 func (s *Scene) GetEntityByName(name string) (*Entity, bool) {
-	e, found := s.entityMap[name]
-	return e, found
+	node, found := s.entityNodeMap[name]
+	return node.entity, found
 }
 
 //Draw : Draws the scene to a render target
@@ -265,13 +306,3 @@ func (s *Scene) update(dur time.Duration) {
 
 //RootNodeName : Default Name for The rootnode of all scenes
 const RootNodeName = "ROOT"
-
-//SceneFuncMap : Functions that can be used in a Scene Def template
-var SceneFuncMap = template.FuncMap{
-	"divide": func(a, b float32) float32 {
-		return a / b
-	},
-	"subtract": func(a, b float32) float32 {
-		return a - b
-	},
-}

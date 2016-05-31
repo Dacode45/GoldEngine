@@ -12,15 +12,16 @@ func main() {
 		Width:      800,
 		Height:     600,
 		ClearColor: sf.Color{R: 50, G: 200, B: 50, A: 0},
-	})
+	}, GE.PhysicsEngineConfig{},
+	)
 	app.ProcessArguments()
 	app.Init()
 	app.ChangeScene("main")
-	scene, _ := app.GetScene("main")
+	scene := app.GetCurrentScene()
 	scene.Start = func() {
 		fmt.Println("In Start")
 		paddle, _ := scene.GetEntityByName("leftPaddle")
-		scene.GetInputCollection().InstallKeyboardSet(paddle.KeyboardSet)
+		app.GetWindow().GetInputCollection().InstallKeyboardSet(paddle.KeyboardSet)
 	}
 	app.Run()
 }

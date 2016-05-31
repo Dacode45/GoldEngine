@@ -8,6 +8,13 @@
       }
     }
   ],
+  "Collider":{
+    "Kind": "CircleCollider",
+    "Arguments":{
+      "Elasticity":0.95,
+      "Mass":1
+    }
+  },
   "Transformer":{
     "Kind":"RectangleShape",
     "Arguments":{
@@ -19,12 +26,12 @@
         "A":255
       },
       "Size":{
-        "X":25.0,
-        "Y":100.0
+        "X":2.50,
+        "Y":10.0
       },
       "Origin":{
-        "X":12.5,
-        "Y":50.0
+        "X":1.25,
+        "Y":5.0
       }
     }
   }

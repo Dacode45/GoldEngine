@@ -50,7 +50,7 @@ const (
 	//CircleShapeName : Name of Transformer
 	CircleShapeName = "CircleShape"
 	//ConvexShapeName : Name of Transformer
-	ConvexShapeName = "ConvexShapeName"
+	ConvexShapeName = "ConvexShape"
 	//RectangleShapeName : Name of Transformer
 	RectangleShapeName = "RectangleShape"
 	//TextName : Name of Transformer
@@ -171,9 +171,20 @@ func ArgAsFloat32(arg interface{}) (float32, bool) {
 func ArgAsVector2f(arg interface{}) (sf.Vector2f, bool) {
 	value, ok := arg.(map[string]interface{})
 	if ok {
-		return sf.Vector2f{X: float32(value["X"].(float64)), Y: float32(value["Y"].(float64))}, ok
+		vec, ok := Vector{X: float32(value["X"].(float64)), Y: float32(value["Y"].(float64))}, ok
+		return vec.ToSFML(), ok
 	}
 	return sf.Vector2f{}, ok
+}
+
+//ArgAsVector Converts an interface from a JSON Parser to a Vector2f
+func ArgAsVector(arg interface{}) (Vector, bool) {
+	value, ok := arg.(map[string]interface{})
+	if ok {
+		vec, ok := Vector{X: float32(value["X"].(float64)), Y: float32(value["Y"].(float64))}, ok
+		return vec, ok
+	}
+	return Vector{}, ok
 }
 
 //ArgAsColor Converts an interface from a JSON Parser to a Color
